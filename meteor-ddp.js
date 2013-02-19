@@ -1,40 +1,36 @@
-// /* Desired usage */
-
-// var ddp = new MeteorDdp();
-
-// var conn = ddp.connect();
-// conn.success(function() { console.log('successful conn')});
-// conn.failure(function(err) { console.log('failed conn')});
-
-// var playerPromise = ddp.call('createPlayer');
-// playerPromise.success(function(data) { console.log('got that data')});
-// playerPromise.failure(function() { console.log('failed to get that data')});
-
-// var roomPromise = ddp.call('getRoom', [playerId]);
-// roomPromise.success(function() ...);
-// roomPromise.failure(function() ...);
-
-// $.when(playerPromise, roomPromise).then(function() {
-// 	// do something when player and room are resolved.
-// });
-
-// var players = ddp.sub('players');
-// // players.response(function(data) {console.log('data here' + data)});
-// players.response(playersChanged);
-// players.failure(function(err) {console.log('fail. ' + err)});
-
-
-
-
 var MeteorDdp = function(wsUri) {
 	
 	var sock;
-    var defs = {};
-    var subHandlers = [];
+    var defs = {};          // { id => defObj}
+    var watchers = {};      // { coll_name => [handler1, handler2, ...] }
+    var collections = {};   // { coll_name => {docId => {}, docId => {}, ...}
 
     var _handleData = function(data) {
         if (data.collection) {
             console.log(data);
+
+            var collName = data.collection;
+            var docId = data.id;
+
+            if (data.set) {
+                if (!collections[collName]) {
+                    collections[collName] = {};
+                    collections[collName][docId] = data.set;
+                } else { // already exists, update.
+                    console.log('Will update collection');
+                }
+            } else if (data.unset) {
+
+            }
+
+            console.log('right b4 looping, this is watchers: ');
+            console.log(watchers);
+            console.log(collName);
+
+            for (var i = 0; i < watchers[collName].length; i+=1) {
+                watchers[collName][i].apply(collections);
+            }
+
         } else if (data.methods) {
             console.log(data);
         } else if (data.subs) {
@@ -115,13 +111,11 @@ var MeteorDdp = function(wsUri) {
             return defs[id].promise();
 		},
 
-		subscribe: function(pubName, params, cb) {            
+		subscribe: function(pubName, params) {            
             var id = Ids.next();
             var args = params || [];
 
             defs[id] = new $.Deferred();
-
-            subHandlers[pubName] = cb;
 
             var o = {
                 msg: 'sub',
@@ -133,19 +127,26 @@ var MeteorDdp = function(wsUri) {
             return defs[id].promise();
 		},
 
+        watch: function(collectionName, cb) {
+            if (!watchers[collectionName]) {
+                watchers[collectionName] = [];
+            }            
+            watchers[collectionName].push(cb);
+        },
+
 		send: function(msg) {
 			sock.send(JSON.stringify(msg));
 		},
+
+        getCollections: function() {
+            return collections;
+        },
 
         close: function() {
             sock.close();
         }
 	};
 };
-
-
-
-
 
 
 
@@ -212,16 +213,34 @@ $(function() {
 
             });
 
-            var roomSub = ddp.subscribe('currRoom', [playerId]);
+            // var roomSub = ddp.subscribe('rooms', [playerId]);
 
-            roomSub.done(function() {
-                console.log('Subbed successfully');
-            })
+            // roomSub.done(function() {
+            //     console.log('Subbed successfully');
+            // })
 
-            roomSub.fail(function(err){
-                console.log("Rejected sub");
-                console.log(err);
-            })
+            // roomSub.fail(function(err){
+            //     console.log("Rejected sub");
+            //     console.log(err);
+            // });
+
+            ddp.watch('players', function(data) {
+                console.log('Players changed');
+                console.log(data);
+
+            });
+
+            ddp.watch('rooms', function(data) {
+                // called whenever rooms has changed.
+                console.log('Rooms changed');
+                console.log(data);
+                console.log('Collections:');
+                console.log(collections);
+            });
+            ddp.subscribe('rooms', [playerId]);
+
+
+
 
             // var subPlayers = ddp.subscribe('rooms', [playerId]);
             // $.when(subPlayers).then(function(data) {
@@ -246,22 +265,5 @@ $(function() {
     });
 
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
