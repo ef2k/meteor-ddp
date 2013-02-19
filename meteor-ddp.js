@@ -1,6 +1,8 @@
+/* Experimenting with meteor's distributed data protocol (ddp) */
+
 var MeteorDdp = function(wsUri) {
-	
-	var sock;
+    
+    var sock;
     var defs = {};          // { id => defObj}
     var watchers = {};      // { coll_name => [handler1, handler2, ...] }
     var collections = {};   // { coll_name => {docId => {}, docId => {}, ...}
@@ -49,19 +51,19 @@ var MeteorDdp = function(wsUri) {
         }
     }();
 
-	return {
-		connect: function() {
-			sock = new WebSocket(wsUri);
+    return {
+        connect: function() {
+            sock = new WebSocket(wsUri);
             var conn = new $.Deferred();
             var self = this;
 
-			sock.onopen = function() {
-				self.send({msg:'connect'});
-			};
-			sock.onerror = function(err) {
-				conn.reject("failure");
-			};
-			sock.onmessage = function(msg) {
+            sock.onopen = function() {
+                self.send({msg:'connect'});
+            };
+            sock.onerror = function(err) {
+                conn.reject("failure");
+            };
+            sock.onmessage = function(msg) {
                 var data = {};
                 
                 try {
@@ -69,7 +71,7 @@ var MeteorDdp = function(wsUri) {
                 } catch (err) {
                     conn.reject("Failed to parse response data");
                     return;
-                }			
+                }           
 
                 switch (data.msg) {
                     case 'connected':
@@ -91,15 +93,15 @@ var MeteorDdp = function(wsUri) {
                         console.log('Data in unrecognized format');
                         console.log(data);
                 }
-			};
-			return conn.promise();
-		},
+            };
+            return conn.promise();
+        },
 
-		call: function(methodName, params)  {
+        call: function(methodName, params)  {
             var id = Ids.next();            
             defs[id] = new $.Deferred();
 
-			var args = params || [];
+            var args = params || [];
 
             var o = {
                 msg: 'method',
@@ -109,9 +111,9 @@ var MeteorDdp = function(wsUri) {
             };
             this.send(o);            
             return defs[id].promise();
-		},
+        },
 
-		subscribe: function(pubName, params) {            
+        subscribe: function(pubName, params) {            
             var id = Ids.next();
             var args = params || [];
 
@@ -125,7 +127,7 @@ var MeteorDdp = function(wsUri) {
             };
             this.send(o);
             return defs[id].promise();
-		},
+        },
 
         watch: function(collectionName, cb) {
             if (!watchers[collectionName]) {
@@ -134,9 +136,9 @@ var MeteorDdp = function(wsUri) {
             watchers[collectionName].push(cb);
         },
 
-		send: function(msg) {
-			sock.send(JSON.stringify(msg));
-		},
+        send: function(msg) {
+            sock.send(JSON.stringify(msg));
+        },
 
         getCollections: function() {
             return collections;
@@ -145,17 +147,10 @@ var MeteorDdp = function(wsUri) {
         close: function() {
             sock.close();
         }
-	};
+    };
 };
 
-
-
-
-
-
-/* usage */
-
-
+/* sample usage */
 
 $(function() {
     var meteorUri = 'ws://localhost:3000/websocket';
@@ -169,21 +164,11 @@ $(function() {
     });
 
     $.when(connect).then(function(response) {        
-        // ddp.send({msg: 'method', method:'createPlayer', params:[]});
+
         
-        /*var player = ddp.call('createPlayer');
-        player.done(function(id) {
-            playerId = id;
-        });
-        player.fail(function(err) {
-            console.log("We failed!!! :(");
-            console.log(err);
-        });*/
+        // Example using a pipe:
 
-
-// Example using a pipe:
-
-/*        
+        /*        
         var playerCreated = ddp.call('createPlayer');
         var lobbyJoined = playerCreated.pipe(function(playerId) {
             return ddp.call('joinLobby', [playerId]);
@@ -193,10 +178,8 @@ $(function() {
             console.log(arguments);
             console.log('joined the lobby!');
         });
-*/
-
-// Example using when...then:
-
+        */
+        
         var playerCreated = ddp.call('createPlayer');
         $.when(playerCreated).then(function(playerId) {
 
@@ -239,9 +222,6 @@ $(function() {
             });
             ddp.subscribe('rooms', [playerId]);
 
-
-
-
             // var subPlayers = ddp.subscribe('rooms', [playerId]);
             // $.when(subPlayers).then(function(data) {
             //     console.log("SUB to ROOMS!");
@@ -250,13 +230,7 @@ $(function() {
             //     console.log("<<<");
             // });
 
-
-        }, function(err) {
-            console.log('no failed to do it: ' + err);
         });
-
-
-
 
     }, function(error) {
 
