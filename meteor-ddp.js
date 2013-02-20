@@ -85,39 +85,34 @@ MeteorDdp.prototype.connect = function() {
     return conn.promise();
 };
 
-MeteorDdp.prototype.call = function(methodName, params) {
+MeteorDdp.prototype._deferredSend = function(actionType, name, params) {
     var id = this._Ids.next();
     this.defs[id] = new $.Deferred();
 
     var args = params || [];
 
     var o = {
-        msg: 'method',
-        method: methodName,
-        params: args,
-        id: id,
-    };
-    this.send(o);
-    return this.defs[id].promise();
-};
-
-MeteorDdp.prototype.subscribe = function(pubName, params) {
-    var self = this;
-
-    var id = self._Ids.next();
-    var args = params || [];
-
-    defs[id] = new $.Deferred();
-
-    var o = {
-        msg: 'sub',
-        name: pubName,
+        msg: actionType,
         params: args,
         id: id
     };
 
-    self.send(o);
-    return defs[id].promise();
+    if (actionType === 'method') {
+        o.method = name;
+    } else if (actionType === 'sub') {
+        o.name = name;
+    }
+
+    this.send(o);
+    return this.defs[id].promise();
+};
+
+MeteorDdp.prototype.call = function(methodName, params) {
+    return this._deferredSend('method', methodName, params);
+};
+
+MeteorDdp.prototype.subscribe = function(pubName, params) {
+    return this._deferredSend('sub', pubName, params);
 };
 
 MeteorDdp.prototype.watch = function(collectionName, cb) {
