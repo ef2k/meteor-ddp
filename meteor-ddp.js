@@ -15,7 +15,6 @@ MeteorDdp.prototype._handleData = function(data) {
 
     if(data.set) {
       // console.log('Data was set ', data);
-
       if(!this.collections[collName]) {
         this.collections[collName] = {};
       }
@@ -27,31 +26,49 @@ MeteorDdp.prototype._handleData = function(data) {
       } else {
         // update record
         console.log('update record');
-        for (var k in data.set) {
+        for(var k in data.set) {
           this.collections[collName][docId][k] = data.set[k];
-        }        
+        }
       }
 
       /* Invoke collection watcher CBs */
 
       var changedDoc = this.collections[collName][docId];
-      if (!this.watchers[collName]) {
-        this.watchers[collName] = [];
-      }
-      for (var i = 0; i < this.watchers[collName].length; i++) {
-        this.watchers[collName][i](changedDoc);
-      }
+      this._notifyWatchers(collName, changedDoc);
 
     } else if(data.unset) {
-      console.log('record unset');
+      console.log('Data was unset!!!');
+
+      for(var i = 0; i < data.unset.length; i++) {
+        var propName = data.unset[i];
+        delete this.collections[collName][docId][propName];
+      }
+
+      var changedDoc = this.collections[collName][docId];
+
+      if(Object.keys(changedDoc).length === 0) {
+        delete this.collections[collName][docId];
+        changedDoc = null;
+      }
+
+      this._notifyWatchers(collName, changedDoc);
     }
 
-    // TODO: Report that collection changed
   } else if(data.methods) {
     // TODO data is acked?
   } else if(data.subs) {
     for(var i = 0; i < data.subs.length; i += 1) {
       this.defs[data.subs[i]].resolve();
+    }
+  }
+};
+
+MeteorDdp.prototype._notifyWatchers = function(collName, changedDoc) {
+  if(!this.watchers[collName]) {
+    this.watchers[collName] = [];
+  } else {
+    for(var i = 0; i < this.watchers[collName].length; i++) {
+      this.watchers[collName][i](changedDoc);
     }
   }
 };
