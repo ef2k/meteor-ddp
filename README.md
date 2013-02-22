@@ -1,7 +1,8 @@
 Meteor-DDP
 ==========
 
-A promise-based Meteor DDP client for versions <= 0.5.6. *Still under development*.
+A promise-based Meteor DDP client for versions <= 0.5.6.
+*Currently working to support DDP spec changes in Meteor 0.5.7.*
 
 Dependencies
 --------------------
@@ -23,9 +24,9 @@ ddp.connect().done(function() {
 * **call(methodName, [params, ...])** - Does a Remote Procedure Call on any method exposed through `Meteor.methods` on the server. *Returns -> Promise which resolves with any returned data.*
 
 ```js
-/* Lets say we can RPC a createPlayer method which returns a playerId. Lets also say that we need that 
-   playerId in order to join a game (via a joinGame method which returns a gameId). 
-   Here's a couple of ways to do this with promises: 
+/* Lets say we can RPC a createPlayer method which returns a playerId. Lets also say 
+   that we need the playerId in order to join a game (via a joinGame method 
+   which returns a gameId). Here's a couple of ways to do this with promises: 
 */
 
 // Using the done method...
@@ -57,13 +58,14 @@ $.when(ddp.call('createPlayer')).then(function(playerId) {
 * **subscribe(subscriptionName, [params, ...])** - Subscribes to data published on the server. You can observe changes on a collection by using the 'watch' method. *Returns -> Promise which resolves on successful subscription and fails otherwise.*
 
 ```js
-// Subscribing returns a promise which resolved on success, but you probably only care if the subscription fails...
+// Subscribing returns a promise which resolved on success, but 
+// you probably only care if the subscription fails...
 ddp.subscribe('plyers', [gameId]).fail(function(err) {
   console.log('We actually wanted to subscribe to players not plyers...');
 });
 ```
 
-* **watch(collectionName, callback)** - Observe a collection and be notified whenever that collection changes via your callback. A copy of the modified document will be sent as argument to the callback.
+* **watch(collectionName, callback)** - Observe a collection and be notified whenever that collection changes via your callback. A copy of the modified document will be sent as argument to the callback. *Returns -> void*
 
 ```js
 // So say we subscribed to the `players` collection and want to be notified when any change occurs:
@@ -78,7 +80,8 @@ ddp.watch('players', function(changedDoc) {
 });
 ```
 
-* **close()** - Closes the WebSocket connection.
+* **close()** - Closes the WebSocket connection. *Returns -> void*
+
 ```js
 ddp.close(); // yeah...
 ```
