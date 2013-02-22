@@ -1,7 +1,7 @@
 Meteor-DDP
 ==========
 
-A promise-based Meteor DDP client for versions <= 0.5.6.
+A promise-based Meteor DDP client for versions <= 0.5.6. *Still under development*.
 
 Dependencies
 --------------------
@@ -23,14 +23,17 @@ ddp.connect().done(function() {
 * **call(methodName, [params, ...])** - Does a Remote Procedure Call on any method exposed through `Meteor.methods` on the server. *Returns -> Promise which resolves with any returned data.*
 
 ```js
-/* Lets say we can RPC a createPlayer method which returns a playerId. Lets also say that we need that playerId in order to join a game (via a joinGame method which returns a gameId). Here's a couple of ways to do this with promises: */
+/* Lets say we can RPC a createPlayer method which returns a playerId. Lets also say that we need that 
+   playerId in order to join a game (via a joinGame method which returns a gameId). 
+   Here's a couple of ways to do this with promises: 
+*/
 
 // Using the done method...
 var createPlayer = ddp.call('createPlayer');
 createPlayer.done(function(playerId) {
   var joinGame = ddp.call('joinGame', [playerId]);
   joinGame.done(function(gameId) {
-    console.log('We joined a game, here's the game id: ', gameId);
+    console.log("We joined a game, here's the game id: ", gameId);
   });
 });
 
