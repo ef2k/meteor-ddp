@@ -1,6 +1,5 @@
 $(function() {
   var uri = 'ws://wordrush.meteor.com/websocket';
-  // var uri = 'ws://localhost:3000/websocket';
   var ddp = new MeteorDdp(uri);
 
   $('#stopBtn').on('click', function() {
