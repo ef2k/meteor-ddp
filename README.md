@@ -1,7 +1,7 @@
 Meteor-DDP
 ==========
 
-A promise-based Meteor DDP client for versions <= 0.5.6.
+A promise-based Meteor DDP client version pre1.
 *Currently working to support DDP spec changes in Meteor 0.5.7.*
 
 Dependencies
