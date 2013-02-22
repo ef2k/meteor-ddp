@@ -1,3 +1,5 @@
+/* MeteorDdp - a ddp client for meteor version <= 0.5.6 */
+
 MeteorDdp = function(wsUri) {
   this.wsUri = wsUri;
   this.sock;
@@ -7,63 +9,62 @@ MeteorDdp = function(wsUri) {
 };
 
 MeteorDdp.prototype._handleData = function(data) {
-
   if(data.collection) {
-
     var collName = data.collection;
     var docId = data.id;
 
     if(data.set) {
-      // console.log('Data was set ', data);
       if(!this.collections[collName]) {
         this.collections[collName] = {};
       }
 
-      if(!this.collections[collName][docId]) {
+      var collection = this.collections[collName];
+
+      if(!collection[docId]) {
         // new record
-        console.log('new record');
-        this.collections[collName][docId] = data.set;
+        collection[docId] = data.set;
       } else {
         // update record
-        console.log('update record');
         for(var k in data.set) {
-          this.collections[collName][docId][k] = data.set[k];
+          collection[docId][k] = data.set[k];
         }
       }
-
-      /* Invoke collection watcher CBs */
-
-      var changedDoc = this.collections[collName][docId];
-      this._notifyWatchers(collName, changedDoc);
+      var changedDoc = collection[docId];
+      this._notifyWatchers(collName, changedDoc, docId);
 
     } else if(data.unset) {
-      console.log('Data was unset!!!');
+      var collection = this.collections[collName];
+      var doc = collection[docId];
+
+      // make a copy before deletions
+      var docCopy = JSON.parse(JSON.stringify(doc));
 
       for(var i = 0; i < data.unset.length; i++) {
         var propName = data.unset[i];
-        delete this.collections[collName][docId][propName];
+        delete doc[propName];
       }
 
-      var changedDoc = this.collections[collName][docId];
-
-      if(Object.keys(changedDoc).length === 0) {
-        delete this.collections[collName][docId];
-        changedDoc = null;
+      if(Object.keys(collection[docId]).length === 0) {
+        delete doc;
+        docCopy.__wasDeleted = true;
       }
 
-      this._notifyWatchers(collName, changedDoc);
+      var changedDoc = (docCopy.__wasDeleted) ? docCopy : doc;
+      this._notifyWatchers(collName, changedDoc, docId);
     }
-
-  } else if(data.methods) {
-    // TODO data is acked?
   } else if(data.subs) {
     for(var i = 0; i < data.subs.length; i += 1) {
       this.defs[data.subs[i]].resolve();
     }
-  }
+  }  else if(data.methods) {
+    // what TODO with server ack?
+  } 
 };
 
-MeteorDdp.prototype._notifyWatchers = function(collName, changedDoc) {
+MeteorDdp.prototype._notifyWatchers = function(collName, changedDoc, docId) {
+  changedDoc = JSON.parse(JSON.stringify(changedDoc)); // make a copy      
+  changedDoc._id = docId; // id might be useful to watchers, attach it.
+
   if(!this.watchers[collName]) {
     this.watchers[collName] = [];
   } else {

@@ -1,6 +1,6 @@
 $(function() {
-  // var uri = 'ws://wordrush.meteor.com/websocket';
-  var uri = 'ws://localhost:3000/websocket';
+  var uri = 'ws://wordrush.meteor.com/websocket';
+  // var uri = 'ws://localhost:3000/websocket';
   var ddp = new MeteorDdp(uri);
 
   $('#stopBtn').on('click', function() {
@@ -15,9 +15,9 @@ $(function() {
 
     var joinLobby = createPlayer.pipe(function(id) {
       playerId = id;
-      // setInterval(function() {
-      //   ddp.call('keepAlive', [playerId]);
-      // }, 20 * 1000);
+      setInterval(function() {
+        ddp.call('keepAlive', [playerId]);
+      }, 20 * 1000);
       return ddp.call('joinLobby', [playerId]);
     });
 
@@ -27,20 +27,23 @@ $(function() {
       ddp.subscribe('players', [roomId]);
 
 
-      var printChangedDoc = function(changedDoc) {
-        if (changedDoc) {
-          console.log('This doc changed: ', changedDoc);
-        } else {
-          console.log('Doc is GONE!');
-        }
-      }
 
       ddp.watch('rooms', function(changedDoc) {
-        printChangedDoc(changedDoc);
-      }); 
+        // printChangedDoc(changedDoc);
+        if(changedDoc.__wasDeleted) {
+          console.error('This doc was deleted: ', changedDoc);
+        } else {
+          console.log( changedDoc);
+        }
+      });
 
       ddp.watch('players', function(changedDoc) {
-        printChangedDoc(changedDoc);
+        // printChangedDoc(changedDoc);
+        if(changedDoc.__wasDeleted) {
+          console.error('This doc was deleted: ', changedDoc);
+        } else {
+          console.log('This doc changed: ', changedDoc);
+        }
       });
 
 
@@ -50,3 +53,10 @@ $(function() {
 
   });
 });
+
+var count = 0;
+
+var printChangedDoc = function(changedDoc) {
+    console.log(changedDoc);
+
+  }
