@@ -57,15 +57,17 @@ MeteorDdp.prototype.connect = function() {
   self.sock.onmessage = function(msg) {
     var data = JSON.parse(msg.data);
 
+    console.log(msg);
+
     switch(data.msg) {
     case 'connected':
       conn.resolve(data);
       break;
-    // case 'error':
-    //   self.defs[data.offending_message.id].reject(data.reason);
-    //   break;
     case 'result':
-      self.defs[data.id].resolve(data.result);
+      self._resolveCall(data);
+      break;
+    case 'updated':
+      // TODO method call was acked
       break;
     case 'changed':
       self._changeDoc(data);
@@ -76,32 +78,57 @@ MeteorDdp.prototype.connect = function() {
     case 'removed':
       self._removeDoc(data);
       break;
-    // case 'nosub':
-    //   self.defs[data.id].reject(data.error.reason);
-    //   break;
-    // case 'data':
-    //   self._handleData(data);
-    //   break;
-    case 'updated':
-      console.log("message acknowledged");
-      break;
     case 'ready':
-      console.log('sub was ready');
+      self._resolveSubs(data);
       break;
-    default:
-      console.log('> ', msg);
+    case 'nosub':
+      var error = (data.error) ? data.error : {};
+      self.defs[data.id].reject(error.reason || 'Subscription not found');
+      break;
+    case 'addedBefore':
+      // TODO implement when meteor supports ordered collections.
+      break;
+    case 'movedBefore':
+      // TODO
+      break;           
     }
   };
   return conn.promise();
 };
 
+
+MeteorDdp.prototype._resolveCall = function(data) {   
+  console.log('resolving call', data);
+  if (data.error) {
+    this.defs[data.id].reject(data.error.reason);
+  } else if (data.result) {
+    this.defs[data.id].resolve(data.result);
+  }
+}
+
+MeteorDdp.prototype._resolveSubs = function(data) {
+  var subIds = data.subs;
+  for (var i = 0; i < subIds.length; i++) {
+    this.defs[subIds[i]].resolve();
+  }
+}
+
 MeteorDdp.prototype._changeDoc = function(msg) {
   var collName = msg.collection;
   var id = msg.id;
   var fields = msg.fields;
-  
-  for (var k in fields) {
-    this.collections[collName][id][k] = fields[k];
+  var cleared = msg.cleared;
+  var coll = this.collections[collName];
+
+  if (fields) {
+    for (var k in fields) {
+      coll[id][k] = fields[k];
+    }    
+  } else if (cleared) {
+    for (var i = 0; i < cleared.length; i++) {
+      var fieldName = cleared[i];
+      delete coll[id][fieldName];
+    }
   }
 };
 
