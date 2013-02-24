@@ -1,64 +1,17 @@
-/* MeteorDdp - a ddp client for meteor version <= 0.5.6 */
+/* MeteorDdp - a client for DDP version pre1 */
 
 MeteorDdp = function(wsUri) {
+  this.VERSIONS = ["pre1"];
+
   this.wsUri = wsUri;
   this.sock;
   this.defs = {}; // { id => defObj}
   this.watchers = {}; // { coll_name => [handler1, handler2, ...] }
-  this.collections = {}; // { coll_name => {docId => {}, docId => {}, ...}
+  this.collections = {}; // { coll_name => {docId => {}, docId => {}, ...}  
 };
 
 MeteorDdp.prototype._handleData = function(data) {
-  if(data.collection) {
-    var collName = data.collection;
-    var docId = data.id;
-
-    if(data.set) {
-      if(!this.collections[collName]) {
-        this.collections[collName] = {};
-      }
-
-      var collection = this.collections[collName];
-
-      if(!collection[docId]) {
-        // new record
-        collection[docId] = data.set;
-      } else {
-        // update record
-        for(var k in data.set) {
-          collection[docId][k] = data.set[k];
-        }
-      }
-      var changedDoc = collection[docId];
-      this._notifyWatchers(collName, changedDoc, docId);
-
-    } else if(data.unset) {
-      var collection = this.collections[collName];
-      var doc = collection[docId];
-
-      // make a copy before deletions
-      var docCopy = JSON.parse(JSON.stringify(doc));
-
-      for(var i = 0; i < data.unset.length; i++) {
-        var propName = data.unset[i];
-        delete doc[propName];
-      }
-
-      if(Object.keys(collection[docId]).length === 0) {
-        delete doc;
-        docCopy.__wasDeleted = true;
-      }
-
-      var changedDoc = (docCopy.__wasDeleted) ? docCopy : doc;
-      this._notifyWatchers(collName, changedDoc, docId);
-    }
-  } else if(data.subs) {
-    for(var i = 0; i < data.subs.length; i += 1) {
-      this.defs[data.subs[i]].resolve();
-    }
-  }  else if(data.methods) {
-    // what TODO with server ack?
-  } 
+  alert("Hello, I handled your data, now what?");
 };
 
 MeteorDdp.prototype._notifyWatchers = function(collName, changedDoc, docId) {
@@ -91,12 +44,14 @@ MeteorDdp.prototype.connect = function() {
 
   self.sock.onopen = function() {
     self.send({
-      msg: 'connect'
+      msg: 'connect',
+      version: self.VERSIONS[0],
+      support: self.VERSIONS
     });
   };
 
   self.sock.onerror = function(err) {
-    conn.reject("failure");
+    conn.reject(err);
   };
 
   self.sock.onmessage = function(msg) {
@@ -106,23 +61,63 @@ MeteorDdp.prototype.connect = function() {
     case 'connected':
       conn.resolve(data);
       break;
-    case 'error':
-      self.defs[data.offending_message.id].reject(data.reason);
-      break;
+    // case 'error':
+    //   self.defs[data.offending_message.id].reject(data.reason);
+    //   break;
     case 'result':
       self.defs[data.id].resolve(data.result);
       break;
-    case 'nosub':
-      self.defs[data.id].reject(data.error.reason);
+    case 'changed':
+      self._changeDoc(data);
       break;
-    case 'data':
-      self._handleData(data);
+    case 'added':
+      self._addDoc(data);
+      break;
+    case 'removed':
+      self._removeDoc(data);
+      break;
+    // case 'nosub':
+    //   self.defs[data.id].reject(data.error.reason);
+    //   break;
+    // case 'data':
+    //   self._handleData(data);
+    //   break;
+    case 'updated':
+      console.log("message acknowledged");
+      break;
+    case 'ready':
+      console.log('sub was ready');
       break;
     default:
-      console.log('Data in unrecognized format: ', data.msg);
+      console.log('> ', msg);
     }
   };
   return conn.promise();
+};
+
+MeteorDdp.prototype._changeDoc = function(msg) {
+  var collName = msg.collection;
+  var id = msg.id;
+  var fields = msg.fields;
+  
+  for (var k in fields) {
+    this.collections[collName][id][k] = fields[k];
+  }
+};
+
+MeteorDdp.prototype._addDoc = function(msg) {
+  var collName = msg.collection;
+  var id =  msg.id;
+  if (!this.collections[collName]) {
+    this.collections[collName] = {};
+  }
+  this.collections[collName][id] = msg.fields;
+};
+
+MeteorDdp.prototype._removeDoc = function(msg) {
+  var collName = msg.collection;
+  var id = msg.id;
+  delete this.collections[collName][id];
 };
 
 MeteorDdp.prototype._deferredSend = function(actionType, name, params) {
@@ -161,6 +156,14 @@ MeteorDdp.prototype.watch = function(collectionName, cb) {
   }
   this.watchers[collectionName].push(cb);
 };
+
+MeteorDdp.prototype.getCollection = function(collectionName) {
+    return this.collections[collectionName] || null;
+}
+
+MeteorDdp.prototype.getDocument = function(collectionName, docId) {
+  return this.collections[collectionName][docId] || null;
+}
 
 MeteorDdp.prototype.send = function(msg) {
   this.sock.send(JSON.stringify(msg));
