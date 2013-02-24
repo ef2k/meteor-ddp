@@ -1,8 +1,7 @@
 Meteor-DDP
 ==========
 
-A promise-based Meteor DDP client for version `pre1`.
-*Currently working to support DDP spec changes in Meteor 0.5.7.*
+A promise-based Meteor DDP client for version `pre1` introduced in `Meteor 0.5.7`.
 
 Dependencies
 --------------------
@@ -38,7 +37,7 @@ createPlayer.done(function(playerId) {
   });
 });
 
-// We can pipe it...
+// We can pipe it... (Note: pipe is deprecated as of jQuery 1.8)
 var createPlayer = ddp.call('createPlayer');
 var joinGame = createPlayer.pipe(function(playerId) {
   return ddp.call('joinGame', [playerId]);
@@ -65,6 +64,18 @@ ddp.subscribe('plyers', [gameId]).fail(function(err) {
 });
 ```
 
+* **unsubscribe(subscriptionName)** - Unsubscribes to data published on the server. Leaves local collection intact. *Returns -> Promise which resolves on successful unsubscription and fails if something went wrong in the process or subscription never existed.*
+
+```js
+var unsubPlayers = ddp.unsubscribe('players');
+unsubPlayers.done(function() {
+  console.log("Successfully unsubscribed to players");
+});
+unsubPlayers.fail(function(err) {
+  console.log("Something went wrong, couldn't unsub players. ", err);
+});
+```
+
 * **watch(collectionName, callback)** - Observe a collection and be notified whenever that collection changes via your callback. A copy of the modified document will be sent as argument to the callback. *Returns -> void*
 
 ```js
@@ -78,6 +89,18 @@ ddp.watch('players', function(changedDoc) {
   }
 
 });
+```
+
+* **getCollection(collectionName)** - *Returns -> An Object containing the locally stored collection.*
+
+```js
+ddp.getCollection('rooms'); // -> {id1: {document1}, id2: {document2}, ...}
+```
+
+* **getDocument(collectionName, documentId)** - *Returns -> The document with specified documentId belonging to collectionName.*
+
+```js
+ddp.getDocument('rooms', '4ec81e1b-2e16-42f4-a915-cc18ad7bdb0c') // -> {document}
 ```
 
 * **close()** - Closes the WebSocket connection. *Returns -> void*
