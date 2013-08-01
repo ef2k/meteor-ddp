@@ -108,3 +108,24 @@ ddp.getDocument('rooms', '4ec81e1b-2e16-42f4-a915-cc18ad7bdb0c') // -> {document
 ```js
 ddp.close(); // yeah...
 ```
+
+# Oauth Methods
+
+* **loginWithOauth(options)** - Log into meteor with oauth. *Returns -> Promise which resolves on login.*
+
+```js
+ddp.loginWithOauth({
+ clientId: "1234a56b7a890123b4a56",
+ oauthUrl: "https://github.com/login/oauth/authorize",
+ redirectUrl: "http://localhost:3000/_oauth/github?close",
+ scopes: ["user:email"]
+}).then(function () {
+     console.log("We are logged in.");
+  });
+```
+
+* **oauthPrompt()** - Reopen the oauth prompt. This re-authorizes with your oauth provider, unlike loginWithOauth which just makes sure the user is authenticated with meteor. *Returns -> Promise which resolves on login.*
+
+```js
+ddp.oauthPrompt();
+```
