@@ -222,7 +222,7 @@ MeteorDdp.prototype.oauthPrompt = function (timeoutInSeconds) {
     //we cannot trust the credentialRequestCompleteCallback callback because if
     //the window gets redirected the window reference will become null and the callback will be triggered
     //even though this could be before the user authenticated
-    //so let's try every second for 60 seconds to login and then consider the login failed
+    //so let's try every second until the timeout to login and then consider the login failed
     var tryLoginInterval = setInterval(function () {
         attempts++;
 
