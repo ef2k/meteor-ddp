@@ -167,7 +167,6 @@ Oauth = {};
         }, 100);
     };
 
-
     var openCenteredPopup = function (url, width, height) {
         var screenX = typeof window.screenX !== 'undefined'
             ? window.screenX : window.screenLeft;
@@ -194,10 +193,12 @@ Oauth = {};
 
 }).call(this);
 
-MeteorDdp.prototype.loginWithOauth = function (options) {
+//@param {function(string):string} oauthLoginUrl Given the credentialToken as a parameter and
+//should return the oauthLoginUrl
+MeteorDdp.prototype.loginWithOauth = function (oauthLoginUrl) {
     var self = this;
 
-    self.oauth = options;
+    self.oauthLoginUrl = oauthLoginUrl;
 
     //if there is a login token try to resume the session
     var loginToken = localStorage.getItem(self._loginTokenKey);
@@ -208,33 +209,52 @@ MeteorDdp.prototype.loginWithOauth = function (options) {
 };
 
 MeteorDdp.prototype._loginTokenKey = "Meteor.loginToken";
-MeteorDdp.prototype.oauthPrompt = function () {
-    var def = $.Deferred();
-    var credentialToken = Random.id(),
-        self = this,
-        loginUrl = self.oauth.oauthUrl +
-            "?client_id=" + self.oauth.clientId +
-            "&scope=" + self.oauth.scopes.map(encodeURIComponent).join('+') +
-            "&redirect_uri=" + self.oauth.redirectUrl +
-            "&state=" + credentialToken;
+MeteorDdp.prototype.oauthPrompt = function (timeoutInSeconds) {
+    //default timeout to 60 seconds
+    timeoutInSeconds = timeoutInSeconds ? timeoutInSeconds : 60;
 
-    Oauth.initiateLogin(credentialToken, loginUrl,
-        function () {
-            //after the login popup closes attempt to login
-            self.call("login", [
-                    { oauth: { credentialToken: credentialToken }}
-                ])
-                .done(function (data) {
-                    //if we were successful logging in with the credential token then store it
-                    localStorage.setItem(self._loginTokenKey, data.token);
-                    def.resolve();
-                })
-                .fail(function (error) {
-                    def.reject(error);
-                });
-        }, {width: 900, height: 450});
+    var def = $.Deferred(),
+        credentialToken = Random.id(),
+        self = this,
+        attempts,
+        error;
+
+    //we cannot trust the credentialRequestCompleteCallback callback because if
+    //the window gets redirected the window reference will become null and the callback will be triggered
+    //even though this could be before the user authenticated
+    //so let's try every second until the timeout to login and then consider the login failed
+    var tryLoginInterval = setInterval(function () {
+        attempts++;
+
+        //after the login popup closes attempt to login
+        self.call("login", [
+                { oauth: { credentialToken: credentialToken }}
+            ])
+            .done(function (data) {
+                //if we were successful logging in with the credential token then store it
+                localStorage.setItem(self._loginTokenKey, data.token);
+                def.resolve();
+                clearInterval(tryLoginInterval);
+            })
+            .fail(function (data) {
+                error = data;
+            });
+
+        if (attempts > timeoutInSeconds) {
+            def.reject(error);
+            clearInterval(tryLoginInterval);
+        }
+    }, 1000);
+
+    Oauth.initiateLogin(credentialToken, self.oauthLoginUrl(credentialToken), function () {
+    }, {width: 900, height: 450});
 
     return def.promise();
+};
+
+MeteorDdp.prototype.logout = function () {
+    localStorage.removeItem(this._loginTokenKey);
+    return this.call("logout");
 };
 
 MeteorDdp.prototype._resumeSession = function (loginToken) {
