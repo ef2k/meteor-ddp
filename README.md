@@ -111,20 +111,32 @@ ddp.close(); // yeah...
 
 # Oauth Methods
 
-* **loginWithOauth(options)** - Log into meteor with oauth. *Returns -> Promise which resolves on login.*
+* **loginWithOauth(oauthLoginUrl)** - Log into meteor with oauth. *Returns -> Promise which resolves on login.*
 
 ```js
-ddp.loginWithOauth({
- clientId: "1234a56b7a890123b4a56",
- oauthUrl: "https://github.com/login/oauth/authorize",
- redirectUrl: "http://localhost:3000/_oauth/github?close",
- scopes: ["user:email"]
-}).then(function () {
+ddp.loginWithOauth(
+    //setup the twitter oauth login url
+    function (credentialToken) {
+        var callbackUrl = "http://localhost:3000/_oauth/twitter?close&state=" + credentialToken;
+
+        var loginUrl = "http://localhost:3000/_oauth/twitter/?requestTokenAndRedirect="
+            + encodeURIComponent(callbackUrl)
+            + "&state=" + credentialToken;
+
+        return loginUrl;
+    }
+).then(function () {
      console.log("We are logged in.");
   });
 ```
 
-* **oauthPrompt()** - Reopen the oauth prompt. This re-authorizes with your oauth provider, unlike loginWithOauth which just makes sure the user is authenticated with meteor. *Returns -> Promise which resolves on login.*
+* **logout()** - Logout from meteor. *Returns -> Promise which resolves on logout.*
+
+```js
+ddp.logout();
+```
+
+* **oauthPrompt(timeoutInSeconds)** - Reopen the oauth prompt. This re-authorizes with your oauth provider, unlike loginWithOauth which just makes sure the user is authenticated with meteor. *Returns -> Promise which resolves on login.*
 
 ```js
 ddp.oauthPrompt();
