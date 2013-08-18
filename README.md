@@ -80,11 +80,11 @@ unsubPlayers.fail(function(err) {
 
 ```js
 // So say we subscribed to the `players` collection and want to be notified when any change occurs:
-ddp.watch('players', function(changedDoc) {
-  console.log("The players collection changed. Here's what changed: ", changedDoc);
+ddp.watch('players', function(changedDoc, message) {
+  console.log("The players collection changed. Here's what changed: ", changedDoc, message);
 
-  // Was it deleted?
-  if (changedDoc.__wasDeleted) {
+  // Was it removed?
+  if (message === "removed") {
     console.log("This document doesn't exist in our collection anymore :(");
   }
 
