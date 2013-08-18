@@ -8,7 +8,7 @@ var MeteorDdp = function(wsUri) {
   this.defs = {};         // { deferred_id => deferred_object }
   this.subs = {};         // { pub_name => deferred_id }
   this.watchers = {};     // { coll_name => [cb1, cb2, ...] }
-  this.collections = {};  // { coll_name => {docId => {doc}, docId => {doc}, ...} }  
+  this.collections = {};  // { coll_name => {docId => {doc}, docId => {doc}, ...} }
 };
 
 MeteorDdp.prototype._Ids = function() {
@@ -122,7 +122,7 @@ MeteorDdp.prototype._changeDoc = function(msg) {
   }
 
   var changedDoc = coll[id];
-  this._notifyWatchers(collName, changedDoc, id);
+  this._notifyWatchers(collName, changedDoc, id, msg.msg);
 };
 
 MeteorDdp.prototype._addDoc = function(msg) {
@@ -137,7 +137,7 @@ MeteorDdp.prototype._addDoc = function(msg) {
   this.collections[collName][id] = msg.fields;
 
   var changedDoc = this.collections[collName][id];
-  this._notifyWatchers(collName, changedDoc, id);
+  this._notifyWatchers(collName, changedDoc, id, msg.msg);
 };
 
 MeteorDdp.prototype._removeDoc = function(msg) {
@@ -146,20 +146,19 @@ MeteorDdp.prototype._removeDoc = function(msg) {
   var doc = this.collections[collName][id];
 
   var docCopy = JSON.parse(JSON.stringify(doc));
-  docCopy.__wasDeleted = true;
   delete this.collections[collName][id];
-  this._notifyWatchers(collName, docCopy, id);
+  this._notifyWatchers(collName, docCopy, id, msg.msg);
 };
 
-MeteorDdp.prototype._notifyWatchers = function(collName, changedDoc, docId) {
-  changedDoc = JSON.parse(JSON.stringify(changedDoc)); // make a copy      
+MeteorDdp.prototype._notifyWatchers = function(collName, changedDoc, docId, message) {
+  changedDoc = JSON.parse(JSON.stringify(changedDoc)); // make a copy
   changedDoc._id = docId; // id might be useful to watchers, attach it.
 
   if (!this.watchers[collName]) {
     this.watchers[collName] = [];
   } else {
     for (var i = 0; i < this.watchers[collName].length; i++) {
-      this.watchers[collName][i](changedDoc);
+      this.watchers[collName][i](changedDoc, message);
     }
   }
 };
